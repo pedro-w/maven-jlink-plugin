@@ -39,6 +39,7 @@ package org.apache.maven.plugins.jlink;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -51,7 +52,6 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.maven.archiver.MavenArchiver;
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -75,6 +75,7 @@ import org.codehaus.plexus.languages.java.jpms.ResolvePathsResult;
 import org.codehaus.plexus.languages.java.version.JavaVersion;
 
 import static java.util.Collections.singletonMap;
+import static org.apache.maven.archiver.MavenArchiver.parseBuildOutputTimestamp;
 
 /**
  * The JLink goal is intended to create a Java Run Time Image file based on
@@ -510,12 +511,7 @@ public class JLinkMojo extends AbstractJLinkMojo {
      * @return true in case where the classifier is not {@code null} and contains something else than white spaces.
      */
     protected boolean hasClassifier() {
-        boolean result = false;
-        if (getClassifier() != null && !getClassifier().isEmpty()) {
-            result = true;
-        }
-
-        return result;
+        return getClassifier() != null && !getClassifier().isEmpty();
     }
 
     private File createZipArchiveFromImage(File outputDirectory, File outputDirectoryImage)
@@ -523,10 +519,9 @@ public class JLinkMojo extends AbstractJLinkMojo {
         zipArchiver.addDirectory(outputDirectoryImage);
 
         // configure for Reproducible Builds based on outputTimestamp value
-        Date lastModified = new MavenArchiver().parseOutputTimestamp(outputTimestamp);
-        if (lastModified != null) {
-            zipArchiver.configureReproducible(lastModified);
-        }
+        parseBuildOutputTimestamp(outputTimestamp)
+                .ifPresent(date -> zipArchiver.configureReproducibleBuild(
+                        FileTime.fromMillis(Date.from(date).getTime())));
 
         File resultArchive = getArchiveFile(outputDirectory, finalName, getClassifier(), "zip");
 

@@ -38,7 +38,6 @@ package org.apache.maven.plugins.jlink;
  */
 
 import java.io.File;
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -89,21 +88,9 @@ public abstract class AbstractJLinkMojo extends AbstractMojo {
         Toolchain tc = null;
 
         if (jdkToolchain != null) {
-            // Maven 3.3.1 has plugin execution scoped Toolchain Support
-            try {
-                Method getToolchainsMethod = toolchainManager
-                        .getClass()
-                        .getMethod("getToolchains", MavenSession.class, String.class, Map.class);
-
-                @SuppressWarnings("unchecked")
-                List<Toolchain> tcs = (List<Toolchain>)
-                        getToolchainsMethod.invoke(toolchainManager, getSession(), "jdk", jdkToolchain);
-
-                if (tcs != null && tcs.size() > 0) {
-                    tc = tcs.get(0);
-                }
-            } catch (ReflectiveOperationException | SecurityException | IllegalArgumentException e) {
-                // ignore
+            List<Toolchain> tcs = toolchainManager.getToolchains(getSession(), "jdk", jdkToolchain);
+            if (tcs != null && !tcs.isEmpty()) {
+                tc = tcs.get(0);
             }
         }
 
@@ -163,12 +150,7 @@ public abstract class AbstractJLinkMojo extends AbstractMojo {
     }
 
     protected boolean hasClassifier(String classifier) {
-        boolean result = false;
-        if (classifier != null && !classifier.isEmpty()) {
-            result = true;
-        }
-
-        return result;
+        return classifier != null && !classifier.isEmpty();
     }
 
     /**
